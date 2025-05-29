@@ -1,0 +1,100 @@
+# TASK 03
+
+!pip install -q kaggle
+
+from google.colab import files
+files.upload()  
+
+!mkdir -p ~/.kaggle
+!cp kaggle.json ~/.kaggle/
+!chmod 600 ~/.kaggle/kaggle.json
+
+
+!kaggle competitions download -c dogs-vs-cats
+!unzip -q dogs-vs-cats.zip -d data
+!unzip -q data/train.zip -d data/train
+
+
+import os
+import cv2
+import numpy as np
+from tqdm import tqdm
+from sklearn.model_selection import train_test_split
+
+IMG_SIZE = 64
+DATA_PATH = 'data/train'
+MAX_IMAGES = 2500 
+
+def load_images(data_path, max_images=2500, img_size=64):
+    X, y = [], []
+    image_files = os.listdir(data_path)[:max_images]
+    for img_name in tqdm(image_files):
+        label = 0 if 'cat' in img_name else 1
+        img_path = os.path.join(data_path, img_name)
+        img = cv2.imread(img_path)
+        img = cv2.resize(img, (img_size, img_size))
+        X.append(img)
+        y.append(label)
+    return np.array(X), np.array(y)
+
+X, y = load_images(DATA_PATH, MAX_IMAGES, IMG_SIZE)
+
+X = X / 255.0
+X_flat = X.reshape(len(X), -1)
+
+from sklearn.decomposition import PCA
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+X_train, X_test, y_train, y_test = train_test_split(X_flat, y, test_size=0.2, random_state=42)
+
+pca = PCA(n_components=100)
+X_train_pca = pca.fit_transform(X_train)
+X_test_pca = pca.transform(X_test)
+pca = PCA(n_components=100)
+X_train_pca = pca.fit_transform(X_train)
+X_test_pca = pca.transform(X_test)
+
+svm = SVC(kernel='rbf', C=1, gamma='scale')
+svm.fit(X_train_pca, y_train)
+
+y_pred = svm.predict(X_test_pca)
+
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("\nClassification Report:\n", classification_report(y_test, y_pred, target_names=['Cat', 'Dog']))
+
+from sklearn.decomposition import PCA
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+X_train, X_test, y_train, y_test = train_test_split(X_flat, y, test_size=0.2, random_state=42)
+
+pca = PCA(n_components=100)
+X_train_pca = pca.fit_transform(X_train)
+X_test_pca = pca.transform(X_test)
+
+
+svm = SVC(kernel='rbf', C=1, gamma='scale')
+svm.fit(X_train_pca, y_train)
+
+
+y_pred = svm.predict(X_test_pca)
+
+
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("\nClassification Report:\n", classification_report(y_test, y_pred, target_names=['Cat', 'Dog']))
+
+
+
+cm = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(6, 4))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Cat', 'Dog'], yticklabels=['Cat', 'Dog'])
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
